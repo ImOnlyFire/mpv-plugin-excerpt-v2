@@ -210,8 +210,13 @@ function excerpt_on_loaded()
 	mp.osd_message("excerpt: use i and o to set IN and OUT points.", 3)
 
 	local operating_system = string.lower(os.capture("uname"))
-	installed_gpus = string.lower(os.capture("lspci -k | grep -E 'VGA|3D|Display'"))
-
+	local installed_gpus = ""
+	if operating_system == "" then
+		installed_gpus = string.lower(os.capture("wmic path win32_videocontroller get caption"))
+	else
+		installed_gpus = string.lower(os.capture("lspci -k | grep -E 'VGA|3D|Display"))
+	end
+	
 	-- Set GPU profiles
 	if operating_system == "darwin" then
 		table.insert(ffmpeg_profiles, {"ACCURATE (MacOS GPU)", "-c:v", "h264_videotoolbox", "-b:v", "10000k", "-c:a", "aac", ".mp4"})
@@ -220,6 +225,8 @@ function excerpt_on_loaded()
 			table.insert(ffmpeg_profiles, {"ACCURATE (NVIDIA GPU)", "-c:v", "h264_nvenc", "-preset", "slow", "-c:a", "aac", ".mp4"})
 		elseif string.find(installed_gpus, "intel")  then
 			table.insert(ffmpeg_profiles, {"ACCURATE (INTEL GPU)", "-vf", "'format=nv12,hwupload'", "-c:v", "h264_vaapi", "-qp", "25", "-c:a", "aac", ".mp4"})
+		elseif string.find(installed_gpus, "amd") then
+			table.insert(ffmpeg_profiles, {"ACCURATE (AMD GPU)", "-c:v", "h264_amf", "-c:a", "aac", ".mp4"})
 		end
 	end 
 
