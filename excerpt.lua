@@ -28,6 +28,8 @@ function excerpt_on_eof()
 end
 mp.register_event("eof-reached", excerpt_on_eof)
 
+operating_system = ""
+
 -- range marking
 
 function excerpt_mark_begin_handler() 
@@ -141,12 +143,30 @@ function excerpt_write_handler()
 			table.insert(cmd["args"], "-hwaccel_output_format")
 			table.insert(cmd["args"], "cuda")
 		elseif string.find(installed_gpus, "intel") then
-			table.insert(cmd["args"], "-hwaccel") 
-			table.insert(cmd["args"], "vaapi")
+			if operating_system ~= "windows" then
+				table.insert(cmd["args"], "-hwaccel")
+				table.insert(cmd["args"], "qsv") -- Intel Quick Sync Video (QSV) for Windows
+				table.insert(cmd["args"], "-hwaccel_output_format")
+				table.insert(cmd["args"], "qsv")
+			else
+				table.insert(cmd["args"], "-hwaccel") 
+				table.insert(cmd["args"], "vaapi")
+				table.insert(cmd["args"], "-hwaccel_output_format") 
+				table.insert(cmd["args"], "vaapi")
+				table.insert(cmd["args"], "-vaapi_device") 
+				table.insert(cmd["args"], "/dev/dri/renderD128") 
+			end
+		elseif string.find(installed_gpus, "amd") then
+			-- Use OpenCL for AMD GPUs
+			table.insert(cmd["args"], "-hwaccel")
+			table.insert(cmd["args"], "opencl")
 			table.insert(cmd["args"], "-hwaccel_output_format") 
-			table.insert(cmd["args"], "vaapi")
-			table.insert(cmd["args"], "-vaapi_device") 
-			table.insert(cmd["args"], "/dev/dri/renderD128") 
+			table.insert(cmd["args"], "opencl")
+			-- Specify the OpenCL device and platform
+			table.insert(cmd["args"], "-cl_device")
+			table.insert(cmd["args"], "gpu")
+			table.insert(cmd["args"], "-cl_platform")
+			table.insert(cmd["args"], "0")
 		end
 	end
 
@@ -209,9 +229,10 @@ end
 function excerpt_on_loaded()
 	mp.osd_message("excerpt: use i and o to set IN and OUT points.", 3)
 
-	local operating_system = string.lower(os.capture("uname"))
+	operating_system = string.lower(os.capture("uname"))
 	local installed_gpus = ""
 	if operating_system == "" then
+		operating_system = "windows"
 		installed_gpus = string.lower(os.capture("wmic path win32_videocontroller get caption"))
 	else
 		installed_gpus = string.lower(os.capture("lspci -k | grep -E 'VGA|3D|Display"))
