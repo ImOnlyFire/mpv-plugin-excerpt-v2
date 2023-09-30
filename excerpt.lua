@@ -28,7 +28,7 @@ function excerpt_on_eof()
 end
 mp.register_event("eof-reached", excerpt_on_eof)
 
-operating_system = ""
+local operating_system = os.getenv("OS"):lower()
 
 -- range marking
 
@@ -143,7 +143,7 @@ function excerpt_write_handler()
 			table.insert(cmd["args"], "-hwaccel_output_format")
 			table.insert(cmd["args"], "cuda")
 		elseif string.find(installed_gpus, "intel") then
-			if operating_system ~= "windows" then
+			if operating_system == "windows_nt" then
 				table.insert(cmd["args"], "-hwaccel")
 				table.insert(cmd["args"], "qsv") -- Intel Quick Sync Video (QSV) for Windows
 				table.insert(cmd["args"], "-hwaccel_output_format")
@@ -229,10 +229,8 @@ end
 function excerpt_on_loaded()
 	mp.osd_message("excerpt: use i and o to set IN and OUT points.", 3)
 
-	operating_system = string.lower(os.capture("uname"))
 	local installed_gpus = ""
-	if operating_system == "" then
-		operating_system = "windows"
+	if operating_system == "windows_nt" then
 		installed_gpus = string.lower(os.capture("wmic path win32_videocontroller get caption"))
 	else
 		installed_gpus = string.lower(os.capture("lspci -k | grep -E 'VGA|3D|Display"))
